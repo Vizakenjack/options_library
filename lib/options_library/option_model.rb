@@ -31,6 +31,9 @@ module Option
 
     def calc_price
       raise "Invalid parameters"  unless valid?
+      # puts "calcing price..."
+      # binding.pry
+      # puts "#{price}, #{strike}, #{dte}, #{time}, #{interest}, #{sigma}, #{dividend}"
       CALC_PRICE_METHODS[option_type].call(price, strike, time, interest, sigma, dividend)
     end
 

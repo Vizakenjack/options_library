@@ -45,6 +45,8 @@ module Option
 	
       # computes the fair value of the call based on the knowns and assumed volatility (sigma)
       def price_call( underlying, strike, time, interest, sigma, dividend )
+        return 0  if underlying == strike && time <= 0.00000
+        
         d1 = d_one( underlying, strike, time, interest, sigma, dividend )
         discounted_underlying = exp(-1.0 * dividend * time) * underlying
         probability_weighted_value_of_being_exercised = discounted_underlying * norm_sdist( d1 )
@@ -58,6 +60,8 @@ module Option
 	
       # computes the fair value of the put based on the knowns and assumed volatility (sigma)
       def price_put( underlying, strike, time, interest, sigma, dividend )
+        return 0  if underlying == strike && time <= 0.00000
+
         d2 = d_two( underlying, strike, time, interest, sigma, dividend )
         discounted_strike = strike * exp(-1.0 * interest * time)
         probabiltity_weighted_value_of_discounted_strike = discounted_strike * norm_sdist( -1.0 * d2 )
@@ -122,7 +126,7 @@ module Option
         while( sum + term != sum )
           sum = sum + term
           term = term * z * z / i
-		  i += 2.0
+		      i += 2.0
         end
 		
         0.5 + sum * phi(z)
