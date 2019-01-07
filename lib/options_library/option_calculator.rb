@@ -8,33 +8,35 @@ module Option
       MIN_Z_SCORE, MAX_Z_SCORE = -8.0, +8.0
 	
       include Math
-	
+
       # computes the call price sensitivity to a change in underlying price
-      def delta_call( underlying, strike, time, interest, sigma, dividend )
+      def delta_call(underlying, strike, time, interest, sigma, dividend)
+        return 0.5  if underlying == strike and time <= 0.000001
         norm_sdist( d_one( underlying, strike, time, interest, sigma, dividend ) )
       end
 
       # computes the put price sensitivity to a change in underlying price	
-      def delta_put( underlying, strike, time, interest, sigma, dividend )
+      def delta_put(underlying, strike, time, interest, sigma, dividend)
+        return 0.5  if underlying == strike and time <= 0.000001
         delta_call( underlying, strike, time, interest, sigma, dividend ) - 1
       end
 
       # computes the option price sensitivity to a change in delta	
-      def gamma( underlying, strike, time, interest, sigma, dividend )
-        phi( d_one( underlying, strike, time, interest, sigma, dividend ) ) / ( underlying * sigma * sqrt(time) )
+      def gamma(underlying, strike, time, interest, sigma, dividend)
+        phi(d_one(underlying, strike, time, interest, sigma, dividend)) / (underlying * sigma * sqrt(time))
       end
 	
       # computes the call price sensitivity to a change in time
-      def theta_call( underlying, strike, time, interest, sigma, dividend )
-        term1 = underlying * phi( d_one( underlying, strike, time, interest, sigma, dividend ) ) * sigma / ( 2 * sqrt(time) )
-        term2 = interest * strike * exp(-1.0 * interest * time) * norm_sdist( d_two( underlying, strike, time, interest, sigma, dividend ) )
+      def theta_call(underlying, strike, time, interest, sigma, dividend)
+        term1 = underlying * phi(d_one(underlying, strike, time, interest, sigma, dividend)) * sigma / (2 * sqrt(time))
+        term2 = interest * strike * exp(-1.0 * interest * time) * norm_sdist(d_two(underlying, strike, time, interest, sigma, dividend))
         ( - term1 - term2 ) / 365.0
       end
 
       # computes the put price sensitivity to a change in time
-      def theta_put( underlying, strike, time, interest, sigma, dividend )
-        term1 = underlying * phi( d_one( underlying, strike, time, interest, sigma, dividend ) ) * sigma / ( 2 * sqrt(time) )
-        term2 = interest * strike * exp(-1.0 * interest * time) * norm_sdist( - d_two( underlying, strike, time, interest, sigma, dividend ) )
+      def theta_put(underlying, strike, time, interest, sigma, dividend)
+        term1 = underlying * phi(d_one(underlying, strike, time, interest, sigma, dividend )) * sigma / (2 * sqrt(time))
+        term2 = interest * strike * exp(-1.0 * interest * time) * norm_sdist( - d_two(underlying, strike, time, interest, sigma, dividend))
         ( - term1 + term2 ) / 365.0
       end
 
@@ -44,41 +46,41 @@ module Option
       end
 	
       # computes the fair value of the call based on the knowns and assumed volatility (sigma)
-      def price_call( underlying, strike, time, interest, sigma, dividend )
-        return 0  if underlying == strike && time <= 0.00000
+      def price_call(underlying, strike, time, interest, sigma, dividend)
+        return 0  if underlying == strike and time <= 0.000001
         
         d1 = d_one( underlying, strike, time, interest, sigma, dividend )
         discounted_underlying = exp(-1.0 * dividend * time) * underlying
-        probability_weighted_value_of_being_exercised = discounted_underlying * norm_sdist( d1 )
+        probability_weighted_value_of_being_exercised = discounted_underlying * norm_sdist(d1)
 						
-        d2 = d1 - ( sigma * sqrt(time) )
+        d2 = d1 - (sigma * sqrt(time))
         discounted_strike = exp(-1.0 * interest * time) * strike
-        probability_weighted_value_of_discounted_strike = discounted_strike * norm_sdist( d2 )
+        probability_weighted_value_of_discounted_strike = discounted_strike * norm_sdist(d2)
 		
         expected_value = probability_weighted_value_of_being_exercised - probability_weighted_value_of_discounted_strike
       end
 	
       # computes the fair value of the put based on the knowns and assumed volatility (sigma)
-      def price_put( underlying, strike, time, interest, sigma, dividend )
-        return 0  if underlying == strike && time <= 0.00000
+      def price_put(underlying, strike, time, interest, sigma, dividend)
+        return 0  if underlying == strike && time <= 0.000001
 
-        d2 = d_two( underlying, strike, time, interest, sigma, dividend )
+        d2 = d_two(underlying, strike, time, interest, sigma, dividend)
         discounted_strike = strike * exp(-1.0 * interest * time)
-        probabiltity_weighted_value_of_discounted_strike = discounted_strike * norm_sdist( -1.0 * d2 )
+        probabiltity_weighted_value_of_discounted_strike = discounted_strike * norm_sdist(-1.0 * d2)
 		
-        d1 = d2 + ( sigma * sqrt(time) )
+        d1 = d2 + (sigma * sqrt(time))
         discounted_underlying = underlying * exp(-1.0 * dividend * time)
-        probability_weighted_value_of_being_exercised = discounted_underlying * norm_sdist( -1.0 * d1 )
+        probability_weighted_value_of_being_exercised = discounted_underlying * norm_sdist(-1.0 * d1)
 		
         expected_value = probabiltity_weighted_value_of_discounted_strike - probability_weighted_value_of_being_exercised
       end
 	
       # finds the implied volatility based on the target_price passed in.
-      def implied_vol_call( underlying, strike, time, interest, target_price, dividend )
+      def implied_vol_call(underlying, strike, time, interest, target_price, dividend)
         low, high = LOW_VOL, HIGH_VOL
 		
         while( high - low > VOL_TOLERANCE )
-          if( price_call( underlying, strike, time, interest, (high+low)/2.0, dividend ) > target_price )
+          if (price_call( underlying, strike, time, interest, (high+low)/2.0, dividend) > target_price )
             high = (high + low) / 2.0
           else
             low = (high + low) / 2.0
@@ -89,11 +91,11 @@ module Option
       end
 
       # finds the implied volatility based on the target_price passed in.
-      def implied_vol_put( underlying, strike, time, interest, target_price, dividend )
+      def implied_vol_put(underlying, strike, time, interest, target_price, dividend)
         low, high = LOW_VOL, HIGH_VOL
 		
-		while( high - low > VOL_TOLERANCE )
-          if( price_put( underlying, strike, time, interest, (high+low)/2.0, dividend ) > target_price )
+		    while (high - low > VOL_TOLERANCE)
+          if (price_put( underlying, strike, time, interest, (high+low)/2.0, dividend) > target_price )
             high = (high + low) / 2.0
           else
             low = (high + low) / 2.0
@@ -104,23 +106,26 @@ module Option
       end
 	
       # probability of being exercised at maturity (must be greater than d2 by (sigma*sqrt(time)) if exercised)
-      def d_one( underlying, strike, time, interest, sigma, dividend )
-        numerator = ( log(underlying / strike) + (interest - dividend + 0.5 * sigma ** 2.0 ) * time)
-        denominator = ( sigma * sqrt(time) )
+      def d_one(underlying, strike, time, interest, sigma, dividend)
+        return 0  if underlying == strike and time < 0.0001
+
+        numerator = (log(underlying / strike) + (interest - dividend + 0.5 * sigma ** 2.0 ) * time)
+        denominator = (sigma * sqrt(time))
         numerator / denominator
       end
 	
       # probability of underlying reaching the strike price (must be smaller than d1 by (sigma*sqrt(time)) if exercised.
-      def d_two( underlying, strike, time, interest, sigma, dividend ) 
-        d_one( underlying, strike, time, interest, sigma, dividend ) - ( sigma * sqrt(time) )
+      def d_two(underlying, strike, time, interest, sigma, dividend) 
+        d_one(underlying, strike, time, interest, sigma, dividend) - (sigma * sqrt(time))
       end
 	
       # Normal Standard Distribution
       # using Taylor's approximation
-      def norm_sdist( z )
+      def norm_sdist(z)
         return 0.0 if z < MIN_Z_SCORE
         return 1.0 if z > MAX_Z_SCORE
-		
+        raise "norm_sdist: Z is not a number"  if z.to_f.nan?
+
         i, sum, term = 3.0, 0.0, z
 		
         while( sum + term != sum )

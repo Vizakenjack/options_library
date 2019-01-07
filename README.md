@@ -43,7 +43,7 @@ Usage
     gamma = call.calc_gamma # option delta sensitivity to a change in underlying price
     vega  = call.calc_vega  # option price sensitivity to a change in sigma (volatility)
     
-    implied_vol = call.calc_implied_vol( 1.80 ) # implied volatility based on the target price 
+    implied_vol = call.calc_iv( 1.80 ) # implied volatility based on the target price 
 
     # Or go straight at the Calculator methods
     # Option::Calculator.price_call( underlying, strike, time, interest, sigma, dividend )
