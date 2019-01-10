@@ -43,23 +43,31 @@ module Option
       @underlying = p.to_f || 0.0
     end
 
-    def set_sigma_by_price(price)
+    def set_sigma_by_price(price, debug: false)
       raise "Invalid price"  if price.to_i <= 0
       @sigma = 0.5
 
-      while (price - (p = calc_price)).abs > 10
-        raise "Can't find sigma for #{price}"  if @sigma <= 0.01 || @sigma >= 3
+      loop do
+        p = calc_price
+        diff = (price - p).abs / price
 
-        # puts "price = #{p}, sigma = #{@sigma}, but need #{price}"
-        if call? && p > price
-          @sigma *= 1.01
-        elsif call? && p < price
-          @sigma *= 0.99
-        elsif put? && p > price
-          @sigma *= 0.99
-        elsif put? && p < price
-          @sigma *= 1.01
+        if debug
+          puts "price = #{p}, sigma = #{@sigma}, diff = #{diff}, but need #{price}, call? = #{call?}"
         end
+        break  if diff.round(1) == 0
+        
+        if call? && p < price
+          @sigma += 0.01
+        elsif call? && p > price
+          @sigma -= 0.01
+        elsif put? && p > price
+          @sigma -= 0.01
+        elsif put? && p < price
+          @sigma += 0.01
+        end
+
+        # raise "Can't find sigma for #{price}"  if @sigma <= 0 || @sigma >= 10
+        break  if @sigma <= 0 || @sigma > 10
       end
       @sigma = @sigma.round(2)
     end
