@@ -73,7 +73,7 @@ module Option
     end
 
     def set_strike_by_delta(delta)
-      raise "Invalid delta"  if delta.to_i <= 0 || delta.to_i > 1
+      raise "Invalid delta"  if delta <= 0 || delta > 1
       @strike ||= @underlying
 
       while delta != (d = calc_delta.abs.round(2))
@@ -126,6 +126,16 @@ module Option
     def calc_iv(target_price)
       raise "Invalid parameters"  unless valid?
       IMPLIED_VOL_METHODS[option_type].call(underlying, strike, time, interest, target_price, dividend)
+    end
+
+    def calc_greeks
+      {
+        delta:  calc_delta,
+        gamma:  calc_gamma,
+        theta:  calc_theta,
+         vega:  calc_vega,
+           iv:  calc_iv
+      }
     end
 
     private
