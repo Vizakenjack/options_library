@@ -44,26 +44,30 @@ module Option
     end
 
     def set_sigma_by_price(price, debug: false)
-      raise "Invalid price"  if price.to_i <= 0
+      raise "Invalid price: '#{price}'"  if price.to_f <= 0
       @sigma = 0.5
 
+      i = 0
       loop do
+        i += 1
         p = calc_price
         diff = (price - p).abs / price
 
         if debug
-          puts "price = #{p}, sigma = #{@sigma}, diff = #{diff}, but need #{price}, call? = #{call?}"
+          puts "i = #{i}, price = #{p}, sigma = #{@sigma}, diff = #{diff}, but need #{price}, call? = #{call?}"
         end
         break  if diff.round(1) == 0
+        break  if i > 100 && diff < 0.1
+        break  if i > 200 && diff < 0.2
         
         if call? && p < price
-          @sigma += 0.01
+          @sigma += 0.005
         elsif call? && p > price
-          @sigma -= 0.01
+          @sigma -= 0.005
         elsif put? && p > price
-          @sigma -= 0.01
+          @sigma -= 0.005
         elsif put? && p < price
-          @sigma += 0.01
+          @sigma += 0.005
         end
 
         # raise "Can't find sigma for #{price}"  if @sigma <= 0 || @sigma >= 10
@@ -78,6 +82,11 @@ module Option
 
       while delta != (d = calc_delta.abs.round(2))
         raise "Can't find delta for #{delta}"  if d == 0
+
+        # if debug
+        if true
+          puts "d = #{d}"
+        end
 
         if call? && d.round(2) > delta
           @strike *= 1.01
@@ -134,14 +143,14 @@ module Option
         gamma:  calc_gamma,
         theta:  calc_theta,
          vega:  calc_vega,
-           iv:  calc_iv
+           iv:  sigma * 100
       }
     end
 
     private
 
     def valid?
-      underlying > 0 && strike > 0 && sigma > 0 && time >= 0
+      underlying > 0 && strike > 0 && sigma >= 0 && time >= 0
     end
   end
 

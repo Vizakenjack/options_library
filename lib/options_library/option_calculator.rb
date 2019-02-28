@@ -23,7 +23,10 @@ module Option
 
       # computes the option price sensitivity to a change in delta	
       def gamma(underlying, strike, time, interest, sigma, dividend)
-        phi(d_one(underlying, strike, time, interest, sigma, dividend)) / (underlying * sigma * sqrt(time))
+        return 0  if underlying == strike && time <= 0.000001
+
+        g = phi(d_one(underlying, strike, time, interest, sigma, dividend)) / (underlying * sigma * sqrt(time))
+        g.nan? ? 0 : g
       end
 	
       # computes the call price sensitivity to a change in time
@@ -47,7 +50,7 @@ module Option
 	
       # computes the fair value of the call based on the knowns and assumed volatility (sigma)
       def price_call(underlying, strike, time, interest, sigma, dividend)
-        return 0  if underlying == strike and time <= 0.000001
+        return 0  if underlying == strike && time <= 0.000001
         
         d1 = d_one( underlying, strike, time, interest, sigma, dividend )
         discounted_underlying = exp(-1.0 * dividend * time) * underlying
