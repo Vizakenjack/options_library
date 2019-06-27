@@ -5,7 +5,7 @@ module Option
       LOW_VOL, HIGH_VOL, VOL_TOLERANCE = 0.0, 5.0, 0.0001
 
       # used for min/max normal distribution
-      MIN_Z_SCORE, MAX_Z_SCORE = -8.0, +8.0
+      MIN_Z_SCORE, MAX_Z_SCORE = -7.98, +7.98
 	
       include Math
 
@@ -31,16 +31,24 @@ module Option
 	
       # computes the call price sensitivity to a change in time
       def theta_call(underlying, strike, time, interest, sigma, dividend)
+        return 0  if time == 0
+
         term1 = underlying * phi(d_one(underlying, strike, time, interest, sigma, dividend)) * sigma / (2 * sqrt(time))
+
         term2 = interest * strike * exp(-1.0 * interest * time) * norm_sdist(d_two(underlying, strike, time, interest, sigma, dividend))
-        ( - term1 - term2 ) / 365.0
+        result = ( - term1 - term2 ) / 365.0
+        result.nan? ? 0 : result
       end
 
       # computes the put price sensitivity to a change in time
       def theta_put(underlying, strike, time, interest, sigma, dividend)
+        return 0  if time == 0
+
         term1 = underlying * phi(d_one(underlying, strike, time, interest, sigma, dividend )) * sigma / (2 * sqrt(time))
+
         term2 = interest * strike * exp(-1.0 * interest * time) * norm_sdist( - d_two(underlying, strike, time, interest, sigma, dividend))
-        ( - term1 + term2 ) / 365.0
+        result = ( - term1 + term2 ) / 365.0
+        result.nan? ? 0 : result
       end
 
       # computes the option price sensitivity to a change in volatility
@@ -54,6 +62,7 @@ module Option
         
         d1 = d_one( underlying, strike, time, interest, sigma, dividend )
         discounted_underlying = exp(-1.0 * dividend * time) * underlying
+
         probability_weighted_value_of_being_exercised = discounted_underlying * norm_sdist(d1)
 						
         d2 = d1 - (sigma * sqrt(time))
@@ -69,6 +78,7 @@ module Option
 
         d2 = d_two(underlying, strike, time, interest, sigma, dividend)
         discounted_strike = strike * exp(-1.0 * interest * time)
+
         probabiltity_weighted_value_of_discounted_strike = discounted_strike * norm_sdist(-1.0 * d2)
 		
         d1 = d2 + (sigma * sqrt(time))
@@ -125,18 +135,24 @@ module Option
       # Normal Standard Distribution
       # using Taylor's approximation
       def norm_sdist(z)
-        return 0.0 if z < MIN_Z_SCORE
-        return 1.0 if z > MAX_Z_SCORE
+        return 0.0 if z <= MIN_Z_SCORE
+        return 1.0 if z >= MAX_Z_SCORE
         raise "norm_sdist: Z is not a number"  if z.to_f.nan?
 
         i, sum, term = 3.0, 0.0, z
-		
+
         while( sum + term != sum )
           sum = sum + term
           term = term * z * z / i
-		      i += 2.0
+          i += 2.0
+
+          if i >= 1000
+            puts "Returning emergency: i > 1000"
+            z = z > 0 ? 1.0 : 0.0
+            break
+          end
         end
-		
+
         0.5 + sum * phi(z)
       end
 	

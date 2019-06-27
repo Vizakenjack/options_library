@@ -43,7 +43,7 @@ module Option
       @underlying = p.to_f || 0.0
     end
 
-    def set_sigma_by_price(price, debug: false)
+    def set_sigma_by_price(price)
       raise "Invalid price: '#{price}'"  if price.to_f <= 0
       @sigma = 0.5
 
@@ -52,13 +52,13 @@ module Option
         i += 1
         p = calc_price
         diff = (price - p).abs / price
+        
+        # puts "i = #{i}, price = #{p}, sigma = #{@sigma}, diff = #{diff}, but need #{price}, call? = #{call?}"
 
-        if debug
-          puts "i = #{i}, price = #{p}, sigma = #{@sigma}, diff = #{diff}, but need #{price}, call? = #{call?}"
-        end
         break  if diff.round(1) == 0
         break  if i > 100 && diff < 0.1
         break  if i > 200 && diff < 0.2
+        break  if i > 400
         
         if call? && p < price
           @sigma += 0.005
@@ -83,10 +83,7 @@ module Option
       while delta != (d = calc_delta.abs.round(2))
         raise "Can't find delta for #{delta}"  if d == 0
 
-        # if debug
-        if true
-          puts "d = #{d}"
-        end
+        # puts "d = #{d}"  if true
 
         if call? && d.round(2) > delta
           @strike *= 1.01
