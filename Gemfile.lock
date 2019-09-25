@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    options-ruby (1.0.0)
+    options_library (1.1.0)
 
 GEM
   remote: https://rubygems.org/
@@ -18,9 +18,9 @@ PLATFORMS
 
 DEPENDENCIES
   bundler (~> 1.16)
-  options-ruby!
+  options_library!
   pry
   rake (~> 10.0)
 
 BUNDLED WITH
-   1.16.2
+   1.17.2

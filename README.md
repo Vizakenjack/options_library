@@ -1,3 +1,23 @@
+What's changed in this fork
+-----------
+1. Added initialization with hash:
+
+    call = Option::Call.new(price: 95.40, strike: 90, time: 30, sigma: 0.5)
+
+2. Added ability to set time in days:
+
+    call = Option::Call.new
+    call.time = 0.037   # 10 days
+    call.dte = 10       # same as 0.037 for time
+
+3. Fixed bug with non-float inputs.
+
+    # Before
+    call.price = 10.0 # float required
+
+    # After
+    call.price = 10 # works fine, no error
+
 Initial Author
 --------------
 Dan Tylenda-Emmons
@@ -43,28 +63,11 @@ Usage
     gamma = call.calc_gamma # option delta sensitivity to a change in underlying price
     vega  = call.calc_vega  # option price sensitivity to a change in sigma (volatility)
     
-    implied_vol = call.calc_iv( 1.80 ) # implied volatility based on the target price 
+    implied_vol = call.calc_iv( 1.80 ) # implied volatility based on the target price of option
 
     # Or go straight at the Calculator methods
     # Option::Calculator.price_call( underlying, strike, time, interest, sigma, dividend )
     call_price = Option::Calculator.price_call( 94.5, 90.5, 30, 0.01, 0.4875, 0.0 ) 
-
-
-What's changed in this fork
------------
-1. Added ability to initialize an object with hash of params.
-
-    call = Option::Call.new(price: 95.40, strike: 90, time: 30, sigma: 0.5)
-
-2. Added ability to set time in days:
-
-    call = Option::Call.new
-    call.time = 0.037   # 10 days
-    call.dte = 10       # same as 0.037 for time
-
-3. Fixed bug with non-float inputs.
-
-    call.price = 10 # no need to use floats
 
 Contributing
 ------------

@@ -1,12 +1,16 @@
 module Option
   class Model
+    INVALID_PARAMETERS_MESSAGE = "Invalid parameters"
     KNOWN_OPTION_TYPES = [:call, :put]
+    PERCENT_STEP_STRIKE = 1.0 / 100
+    SET_STRIKE_ACCURACY = 0.1 / 100
+    MAX_CYCLES = 1000
 
     # A map to define methods to call based on option_type
-    CALC_PRICE_METHODS  = { call: Calculator.method('price_call'),       put: Calculator.method('price_put') }
-    CALC_DELTA_METHODS  = { call: Calculator.method('delta_call'),       put: Calculator.method('delta_put') }
-    CALC_THETA_METHODS  = { call: Calculator.method('theta_call'),       put: Calculator.method('theta_put') }
-    IMPLIED_VOL_METHODS = { call: Calculator.method('implied_vol_call'), put: Calculator.method('implied_vol_put') }
+    CALC_PRICE_METHODS = { call: Calculator.method("price_call"), put: Calculator.method("price_put") }
+    CALC_DELTA_METHODS = { call: Calculator.method("delta_call"), put: Calculator.method("delta_put") }
+    CALC_THETA_METHODS = { call: Calculator.method("theta_call"), put: Calculator.method("theta_put") }
+    IMPLIED_VOL_METHODS = { call: Calculator.method("implied_vol_call"), put: Calculator.method("implied_vol_put") }
 
     attr_reader :dte, :underlying
     attr_accessor :option_type, :strike, :time, :interest, :sigma, :dividend
@@ -22,7 +26,20 @@ module Option
       @dividend = params[:dividend] || 0.0
       @strike = params[:strike] ? params[:strike].to_f : set_strike_by_delta(params[:delta])
 
-      raise 'Unknown option_type' unless KNOWN_OPTION_TYPES.include?(option_type)
+      raise "Unknown option_type" unless KNOWN_OPTION_TYPES.include?(option_type)
+    end
+
+    def values
+      {
+        option_type: option_type,
+        underlying: underlying,
+        strike: strike,
+        sigma: sigma,
+        dte: dte,
+        time: time,
+        interest: interest,
+        dividend: dividend,
+      }
     end
 
     def call?
@@ -34,7 +51,7 @@ module Option
     end
 
     def dte=(n)
-      n = 0  if !n || n < 0
+      n = 0 if !n || n < 0
       @time = n / 365.0
       @dte = n
     end
@@ -43,104 +60,76 @@ module Option
       @underlying = p.to_f || 0.0
     end
 
-    def set_sigma_by_price(price)
-      raise "Invalid price: '#{price}'"  if price.to_f <= 0
-      @sigma = 0.5
-
-      i = 0
-      loop do
-        i += 1
-        p = calc_price
-        diff = (price - p).abs / price
-        
-        # puts "i = #{i}, price = #{p}, sigma = #{@sigma}, diff = #{diff}, but need #{price}, call? = #{call?}"
-
-        break  if diff.round(1) == 0
-        break  if i > 100 && diff < 0.1
-        break  if i > 200 && diff < 0.2
-        break  if i > 400
-        
-        if call? && p < price
-          @sigma += 0.005
-        elsif call? && p > price
-          @sigma -= 0.005
-        elsif put? && p > price
-          @sigma -= 0.005
-        elsif put? && p < price
-          @sigma += 0.005
-        end
-
-        # raise "Can't find sigma for #{price}"  if @sigma <= 0 || @sigma >= 10
-        break  if @sigma <= 0 || @sigma > 10
-      end
-      @sigma = @sigma.round(2)
-    end
-
-    def set_strike_by_delta(delta)
-      raise "Invalid delta"  if delta <= 0 || delta > 1
-      @strike ||= @underlying
-
-      while delta != (d = calc_delta.abs.round(2))
-        raise "Can't find delta for #{delta}"  if d == 0
-
-        # puts "d = #{d}"  if true
-
-        if call? && d.round(2) > delta
-          @strike *= 1.01
-        elsif call? && d.round(2) < delta
-          @strike *= 0.99
-        elsif put? && d.round(2) > delta
-          @strike *= 0.99
-        elsif put? && d.round(2) < delta
-          @strike *= 1.01
-        end
-      end
-      @strike = @strike.round(2)
-    end
-
     def delta=(d)
       set_strike_by_delta(d)
     end
 
+    def set_strike_by_delta(delta)
+      raise "Invalid delta" unless (0..1).cover?(delta)
+      old_strike = @strike.clone
+      @strike ||= @underlying
+
+      i = 0
+      loop do
+        calced_delta = calc_delta.abs
+
+        if i >= MAX_CYCLES
+          raise "Set strike: can't find value for delta #{delta}, limit reached: #{MAX_CYCLES} cycles"
+        elsif delta.abs - calced_delta <= SET_STRIKE_ACCURACY
+          @strike = @strike.round(2)
+          break
+        elsif calced_delta == 0
+          raise "Set strike: can't find value for delta #{delta}"
+          @strike = old_strike
+        else
+          @strike = try_next_strike(delta.abs, calced_delta)
+        end
+
+        i += 1
+      end
+
+      @strike
+    end
+
     def calc_price
-      raise "Invalid parameters"  unless valid?
+      raise INVALID_PARAMETERS_MESSAGE unless valid?
       # puts "calcing price with params: price = #{underlying}, strike=#{strike}, time=#{time}, dte=#{dte}, interest=#{interest}, sigma=#{sigma}, dividend=#{dividend} "
       CALC_PRICE_METHODS[option_type].call(underlying, strike, time, interest, sigma, dividend)
     end
 
     def calc_delta
-      raise "Invalid parameters"  unless valid?
+      raise INVALID_PARAMETERS_MESSAGE unless valid?
       # puts "calcing delta with params: price = #{underlying}, strike=#{strike}, time=#{time}, dte=#{dte}, interest=#{interest}, sigma=#{sigma}, dividend=#{dividend} "
       CALC_DELTA_METHODS[option_type].call(underlying, strike, time, interest, sigma, dividend)
     end
 
     def calc_gamma
-      raise "Invalid parameters"  unless valid?
+      raise INVALID_PARAMETERS_MESSAGE unless valid?
       Calculator.gamma(underlying, strike, time, interest, sigma, dividend)
     end
 
     def calc_theta
-      raise "Invalid parameters"  unless valid?
+      raise INVALID_PARAMETERS_MESSAGE unless valid?
       CALC_THETA_METHODS[option_type].call(underlying, strike, time, interest, sigma, dividend)
     end
 
     def calc_vega
-      raise "Invalid parameters"  unless valid?
+      raise INVALID_PARAMETERS_MESSAGE unless valid?
       Calculator.vega(underlying, strike, time, interest, sigma, dividend)
     end
 
-    def calc_iv(target_price)
-      raise "Invalid parameters"  unless valid?
-      IMPLIED_VOL_METHODS[option_type].call(underlying, strike, time, interest, target_price, dividend)
+    def calc_iv(target_option_price)
+      raise INVALID_PARAMETERS_MESSAGE unless valid?
+      IMPLIED_VOL_METHODS[option_type].call(underlying, strike, time, interest, target_option_price, dividend)
     end
 
     def calc_greeks
       {
-        delta:  calc_delta,
-        gamma:  calc_gamma,
-        theta:  calc_theta,
-         vega:  calc_vega,
-           iv:  sigma * 100
+        delta: calc_delta,
+        gamma: calc_gamma,
+        theta: calc_theta,
+        vega: calc_vega,
+        iv: sigma * 100,
       }
     end
 
@@ -148,6 +137,15 @@ module Option
 
     def valid?
       underlying > 0 && strike > 0 && sigma >= 0 && time >= 0
+    end
+
+    def try_next_strike(delta, calced_delta)
+      if (call? && calced_delta > delta) || (put? && calced_delta < delta)
+        strike * (1.0 + PERCENT_STEP_STRIKE)
+      else
+        # strike * (1.0 - PERCENT_STEP_STRIKE)
+        strike - (1.0 + PERCENT_STEP_STRIKE)
+      end
     end
   end
 
@@ -164,5 +162,4 @@ module Option
       super
     end
   end
-
 end
