@@ -2,9 +2,9 @@ module Option
   class Model
     INVALID_PARAMETERS_MESSAGE = "Invalid parameters"
     KNOWN_OPTION_TYPES = [:call, :put]
-    PERCENT_STEP_STRIKE = 1.0 / 100
+    PERCENT_STEP_STRIKE = 2.0 / 100
     SET_STRIKE_ACCURACY = 0.1 / 100
-    MAX_CYCLES = 1000
+    MAX_CYCLES = 2000
 
     # A map to define methods to call based on option_type
     CALC_PRICE_METHODS = { call: Calculator.method("price_call"), put: Calculator.method("price_put") }
@@ -74,8 +74,9 @@ module Option
         calced_delta = calc_delta.abs
 
         if i >= MAX_CYCLES
+          # binding.pry()
           raise "Set strike: can't find value for delta #{delta}, limit reached: #{MAX_CYCLES} cycles"
-        elsif delta.abs - calced_delta <= SET_STRIKE_ACCURACY
+        elsif (delta.abs - calced_delta.abs).abs <= SET_STRIKE_ACCURACY
           @strike = @strike.round(2)
           break
         elsif calced_delta == 0
@@ -143,7 +144,6 @@ module Option
       if (call? && calced_delta > delta) || (put? && calced_delta < delta)
         strike * (1.0 + PERCENT_STEP_STRIKE)
       else
-        # strike * (1.0 - PERCENT_STEP_STRIKE)
         strike - (1.0 + PERCENT_STEP_STRIKE)
       end
     end
