@@ -4,6 +4,7 @@ module Option
     KNOWN_OPTION_TYPES = [:call, :put]
     PERCENT_STEP_STRIKE = 2.0 / 100
     SET_STRIKE_ACCURACY = 0.1 / 100
+    LAST_TRY_ACCURACY = 0.033
     MAX_CYCLES = 2000
 
     # A map to define methods to call based on option_type
@@ -65,16 +66,17 @@ module Option
     end
 
     def set_strike_by_delta(delta)
-      raise "Invalid delta" unless (0..1).cover?(delta)
+      raise "Delta `#{delta}` should be in range 0..1" unless (0..1).cover?(delta)
       old_strike = @strike.clone
-      @strike ||= @underlying
+      @strike = @underlying
 
       i = 0
       loop do
         calced_delta = calc_delta.abs
 
         if i >= MAX_CYCLES
-          # binding.pry()
+          diff = (delta.abs - calced_delta.abs).abs
+          return @strike if diff <= LAST_TRY_ACCURACY
           raise "Set strike: can't find value for delta #{delta}, limit reached: #{MAX_CYCLES} cycles"
         elsif (delta.abs - calced_delta.abs).abs <= SET_STRIKE_ACCURACY
           @strike = @strike.round(2)
@@ -83,7 +85,7 @@ module Option
           raise "Set strike: can't find value for delta #{delta}"
           @strike = old_strike
         else
-          @strike = try_next_strike(delta.abs, calced_delta)
+          @strike = try_next_strike(delta.abs, calced_delta, i)
         end
 
         i += 1
@@ -140,11 +142,13 @@ module Option
       underlying > 0 && strike > 0 && sigma >= 0 && time >= 0
     end
 
-    def try_next_strike(delta, calced_delta)
+    def try_next_strike(delta, calced_delta, i)
+      step = 1.0 + PERCENT_STEP_STRIKE + (i / 250)
+
       if (call? && calced_delta > delta) || (put? && calced_delta < delta)
-        strike * (1.0 + PERCENT_STEP_STRIKE)
+        strike * step
       else
-        strike - (1.0 + PERCENT_STEP_STRIKE)
+        strike - step
       end
     end
   end
